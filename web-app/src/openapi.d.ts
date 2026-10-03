@@ -2861,6 +2861,13 @@ export interface components {
       billing_enabled: boolean;
       /** @description Social login providers that are configured on this instance */
       auth_providers: ("google" | "slack" | "github")[];
+      /** @description Generic OpenID Connect login */
+      oidc: {
+        /** @description True when an OpenID Connect provider is configured and reachable */
+        enabled: boolean;
+        /** @description Label for the login button */
+        display_name: string;
+      };
     };
   };
   responses: never;
