@@ -314,6 +314,7 @@ components:
         - password_login_enabled
         - billing_enabled
         - auth_providers
+        - oidc
       properties:
         signup_enabled:
           type: boolean
@@ -330,6 +331,19 @@ components:
           items:
             type: string
             enum: [google, slack, github]
+        oidc:
+          type: object
+          description: Generic OpenID Connect login
+          required:
+            - enabled
+            - display_name
+          properties:
+            enabled:
+              type: boolean
+              description: True when an OpenID Connect provider is configured and reachable
+            display_name:
+              type: string
+              description: Label for the login button
 
   securitySchemes:
     BearerAuth:
