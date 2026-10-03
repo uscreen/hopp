@@ -61,15 +61,15 @@ Open `https://hopp.example.com` in a browser and sign up. The first registered a
 
 By default anyone who can reach your instance can sign up and create their own team. Lock it down in `.env`:
 
-| Variable                 | Effect when set to `true`                                                                                      |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| `DISABLE_SIGNUP`         | New accounts need a team invitation link. The very first account of a fresh instance can still be created.     |
-| `DISABLE_PASSWORD_LOGIN` | Email/password sign-in, sign-up and password reset are rejected. Only the configured OAuth providers are left. |
+| Variable                 | Effect when set to `true`                                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `DISABLE_SIGNUP`         | New accounts need a team invitation link. The very first account of a fresh instance can still be created. |
+| `DISABLE_PASSWORD_LOGIN` | Email/password sign-in, sign-up and password reset are rejected. Only OAuth providers and OIDC are left.   |
 
 Notes:
 
 - With `DISABLE_SIGNUP`, create your admin account first, then invite teammates from the dashboard. Existing users keep signing in as before.
-- `DISABLE_PASSWORD_LOGIN` requires at least one OAuth provider (`GOOGLE_*`, `GITHUB_*` or `SLACK_*`), otherwise the backend refuses to start.
+- `DISABLE_PASSWORD_LOGIN` requires at least one OAuth provider (`GOOGLE_*`, `GITHUB_*` or `SLACK_*`) or [OIDC](#single-sign-on-openid-connect), otherwise the backend refuses to start.
 - OAuth providers without a key and secret are not offered on the login page.
 - Billing is off unless `STRIPE_SECRET_KEY` is set. Without it every team has full access and the web app hides the subscription page.
 
@@ -95,6 +95,7 @@ How accounts are handled:
 
 - Users are matched by email address. The provider must send `email_verified: true`, otherwise the login is rejected.
 - A new user without an invitation gets their own team, like with the other login methods. Set `OIDC_SINGLE_TEAM=true` if everyone from your provider belongs together: the first user creates the team and becomes its admin, everyone after that joins it.
+- With `DISABLE_SIGNUP`, new OIDC users need an invitation too, unless `OIDC_SINGLE_TEAM` is set: then your provider decides who gets an account.
 - Use an `https` issuer. Tokens are trusted because they are fetched directly from the provider's token endpoint over TLS.
 - If the provider cannot be reached when the backend starts, OIDC login is disabled with a warning in the log and the other login methods keep working. Restart the backend once the provider is back.
 
