@@ -5,10 +5,10 @@ internal hostnames in commits.
 
 ## Remotes
 
-| Remote     | Repo           | Purpose                               |
-| ---------- | -------------- | ------------------------------------- |
-| `origin`   | `uscreen/hopp` | our fork                              |
-| `upstream` | `gethopp/hopp` | fetch only, push URL is `DISABLED`    |
+| Remote     | Repo           | Purpose                            |
+| ---------- | -------------- | ---------------------------------- |
+| `origin`   | `uscreen/hopp` | our fork                           |
+| `upstream` | `gethopp/hopp` | fetch only, push URL is `DISABLED` |
 
 Setup after a fresh clone:
 
@@ -22,12 +22,12 @@ git config fetch.prune true
 
 ## Branch model
 
-| Branch          | Base                 | Rules                                                                                      |
-| --------------- | -------------------- | ------------------------------------------------------------------------------------------ |
-| `main`          | `upstream/main`      | Pure mirror. Fast-forward only, never any commits of our own.                              |
-| `uscreen`       | latest upstream tag  | What we run, and the default branch. Internal patches only, as small commits that rebase individually. |
-| `feat/<topic>`  | `main`               | One branch per upstream PR. Never contains internal patches.                               |
-| `spike/<topic>` | `main`               | Spikes, throwaway.                                                                         |
+| Branch          | Base                | Rules                                                                                                  |
+| --------------- | ------------------- | ------------------------------------------------------------------------------------------------------ |
+| `main`          | `upstream/main`     | Pure mirror. Fast-forward only, never any commits of our own.                                          |
+| `uscreen`       | latest upstream tag | What we run, and the default branch. Internal patches only, as small commits that rebase individually. |
+| `feat/<topic>`  | `main`              | One branch per upstream PR. Never contains internal patches.                                           |
+| `spike/<topic>` | `main`              | Spikes, throwaway.                                                                                     |
 
 Deploy releases are tags on `uscreen` named `<upstream-tag>-uscreen.<n>`,
 e.g. `v1.0.32-uscreen.1`. `<n>` restarts at 1 for every upstream tag.
@@ -113,9 +113,41 @@ it, cherry-pick it onto `uscreen` and add it to the list below.
 
 ## Internal patches
 
-Same order as `git log <upstream-tag>..uscreen`.
+Same order as `git log <upstream-tag>..uscreen`. Patches marked "yes" are cherry-picked from
+the `feat/` branch named in the last column; drop them with `git rebase --skip` once upstream
+has merged the corresponding PR.
 
-| Commit                                | Reason                                                             | Upstreamable |
-| ------------------------------------- | ------------------------------------------------------------------ | ------------ |
-| `doc: add FORK.md`                    | Documents the branch model and workflows of this fork.             | no           |
-| `chore: add scripts/sync-upstream.sh` | Keeps `main` a fast-forward mirror and propagates upstream tags.   | no           |
+| Commit                                                                      | Reason                                                                                   | Upstreamable                       | Source branch            |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------- | ------------------------ |
+| `doc: add FORK.md`                                                          | Documents the branch model and workflows of this fork.                                   | no                                 | -                        |
+| `chore: add scripts/sync-upstream.sh`                                       | Keeps `main` a fast-forward mirror and propagates upstream tags.                         | no                                 | -                        |
+| `feat(backend): register social login providers only when configured`       | We run without Google/GitHub/Slack login; unconfigured providers must not be reachable.  | yes                                | `feat/feature-switches`  |
+| `feat(backend): add DISABLE_SIGNUP and DISABLE_PASSWORD_LOGIN switches`     | Our instance is closed: no public sign-up, no passwords.                                 | yes                                | `feat/feature-switches`  |
+| `feat(web-app): follow instance config on login and subscription pages`     | The web app must not offer flows the backend rejects, nor a billing page without Stripe. | yes                                | `feat/feature-switches`  |
+| `doc: document access control switches for self-hosting`                    | Documents the switches above.                                                            | yes                                | `feat/feature-switches`  |
+| `feat(web-app): let team admins rename their team in settings`              | Without Stripe there is no onboarding, so the team name could not be changed.            | yes                                | `feat/team-name-setting` |
+| `feat(backend): add generic OpenID Connect login`                           | We sign in through our own identity provider (Pocket ID, public client with PKCE).       | yes                                | `feat/oidc-sso`          |
+| `feat(backend): add OIDC_SINGLE_TEAM to put all OIDC users into one team`   | Everyone from our identity provider belongs to one team, without invitation links.       | yes                                | `feat/oidc-sso`          |
+| `feat(web-app): add OpenID Connect login button`                            | Login button for the provider above.                                                     | yes                                | `feat/oidc-sso`          |
+| `doc: document OpenID Connect login for self-hosting`                       | Documents OIDC login.                                                                    | yes                                | `feat/oidc-sso`          |
+| `feat(backend): let OIDC satisfy DISABLE_PASSWORD_LOGIN and DISABLE_SIGNUP` | Glue between the switches and OIDC; only exists where both are present.                  | yes, with the later of the two PRs | -                        |
+
+`feat/feature-switches` and `feat/oidc-sso` are independent upstream PRs that both add
+`GET /api/config`. Picking the second one onto `uscreen` conflicts in `config.go`, `server.go`,
+`instanceConfig.go`, `openapi.yaml`, `Login.tsx` and the self-hosting docs: keep both sides, then
+regenerate `web-app/src/openapi.d.ts` and `tauri/src/openapi.d.ts` (`yarn generate-openapi-types`,
+then Prettier).
+
+## Building our backend image
+
+```sh
+yarn install --immutable
+VITE_DISABLE_TELEMETRY=true yarn workspace web-app build
+cp web-app/static/react/assets/index.html backend/web/web-app.html
+docker buildx build --platform linux/amd64 \
+  -t <registry>/hopp-backend:<tag> --push backend
+```
+
+The web app is embedded into the backend image, so both always ship together. The registry
+and the deployment live in our internal infrastructure repo; deploy by digest or by a fixed
+tag, never `latest`.
