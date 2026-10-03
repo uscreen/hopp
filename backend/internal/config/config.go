@@ -164,9 +164,6 @@ func Load() (*Config, error) {
 
 	c.Auth.DisableSignup = os.Getenv("DISABLE_SIGNUP") == "true"
 	c.Auth.DisablePasswordLogin = os.Getenv("DISABLE_PASSWORD_LOGIN") == "true"
-	if c.Auth.DisablePasswordLogin && len(c.SocialProviders()) == 0 {
-		return nil, fmt.Errorf("DISABLE_PASSWORD_LOGIN is set but no social login provider is configured, nobody could sign in")
-	}
 	c.Auth.OIDC.IssuerURL = strings.TrimRight(os.Getenv("OIDC_ISSUER_URL"), "/")
 	c.Auth.OIDC.ClientID = os.Getenv("OIDC_CLIENT_ID")
 	c.Auth.OIDC.ClientSecret = os.Getenv("OIDC_CLIENT_SECRET")
@@ -176,6 +173,10 @@ func Load() (*Config, error) {
 	}
 	c.Auth.OIDC.Redirect = fmt.Sprintf("https://%s/api/auth/social/oidc/callback", c.Server.DeployDomain)
 	c.Auth.OIDC.SingleTeam = os.Getenv("OIDC_SINGLE_TEAM") == "true"
+
+	if c.Auth.DisablePasswordLogin && len(c.SocialProviders()) == 0 && !c.IsOIDCConfigured() {
+		return nil, fmt.Errorf("DISABLE_PASSWORD_LOGIN is set but neither a social login provider nor OIDC is configured, nobody could sign in")
+	}
 
 	c.Database.DSN = os.Getenv("DATABASE_DSN")
 	c.Database.RedisURI = os.Getenv("REDIS_URI")

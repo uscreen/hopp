@@ -384,3 +384,48 @@ func TestInstanceConfig_OIDC(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 }
+
+func TestOIDC_DisableSignupRejectsUninvitedUsers(t *testing.T) {
+	idp := newFakeIDP(t)
+	srv, cleanup := setupTestServerWithOIDC(t, idp, func(cfg *config.Config) {
+		cfg.Auth.DisableSignup = true
+	})
+	defer cleanup()
+
+	// The first account bootstraps the instance.
+	require.Equal(t, http.StatusFound, oidcLogin(t, srv, idp, verifiedClaims("ada@gmail.com", "Ada"), nil).Code)
+
+	rec := oidcLogin(t, srv, idp, verifiedClaims("grace@gmail.com", "Grace"), nil)
+	assert.Equal(t, http.StatusFound, rec.Code)
+	assert.Equal(t, "/login?error=signup_disabled", rec.Header().Get("Location"))
+
+	var count int64
+	require.NoError(t, srv.DB.Model(&models.User{}).Count(&count).Error)
+	assert.Equal(t, int64(1), count)
+}
+
+func TestOIDC_SingleTeamProvisionsUsersDespiteDisableSignup(t *testing.T) {
+	idp := newFakeIDP(t)
+	srv, cleanup := setupTestServerWithOIDC(t, idp, func(cfg *config.Config) {
+		cfg.Auth.DisableSignup = true
+		cfg.Auth.DisablePasswordLogin = true
+		cfg.Auth.OIDC.SingleTeam = true
+	})
+	defer cleanup()
+
+	require.Equal(t, http.StatusFound, oidcLogin(t, srv, idp, verifiedClaims("ada@gmail.com", "Ada"), nil).Code)
+	rec := oidcLogin(t, srv, idp, verifiedClaims("grace@gmail.com", "Grace"), nil)
+	require.Equal(t, http.StatusFound, rec.Code)
+	assert.Contains(t, rec.Header().Get("Location"), "/login?token=")
+
+	var ada, grace models.User
+	require.NoError(t, srv.DB.Where("email = ?", "ada@gmail.com").First(&ada).Error)
+	require.NoError(t, srv.DB.Where("email = ?", "grace@gmail.com").First(&grace).Error)
+	assert.True(t, ada.IsAdmin)
+	assert.False(t, grace.IsAdmin)
+	assert.Equal(t, *ada.TeamID, *grace.TeamID)
+
+	// Password sign-up stays closed for everyone else.
+	blocked := postJSON(t, srv, "/api/sign-up", signUpPayload("stranger@gmail.com"))
+	assert.Equal(t, http.StatusForbidden, blocked.Code)
+}

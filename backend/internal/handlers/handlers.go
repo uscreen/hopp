@@ -154,7 +154,9 @@ func (h *AuthHandler) SocialLoginCallback(c echo.Context) error {
 
 			// Single-team mode: OIDC users without an invitation join the first
 			// team of the instance. On an empty instance there is none yet, so
-			// the first user falls through and creates it as admin.
+			// the first user falls through and creates it as admin. Runs before
+			// the DISABLE_SIGNUP check below: the identity provider decides who
+			// belongs to the team, so these users count as invited.
 			if assignedTeamID == nil && isOIDC && h.Config.Auth.OIDC.SingleTeam {
 				var team models.Team
 				err := tx.Order("id ASC").First(&team).Error
