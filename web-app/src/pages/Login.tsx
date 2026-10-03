@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { FaGoogle } from "react-icons/fa";
 import { GrGithub } from "react-icons/gr";
+import { HiOutlineKey } from "react-icons/hi2";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -118,7 +119,16 @@ export function LoginForm({ className, isInvitation = false, ...props }: LoginFo
   const signupEnabled = instanceConfig?.signup_enabled ?? true;
   const passwordLoginEnabled = instanceConfig?.password_login_enabled ?? true;
   const authProviders = instanceConfig?.auth_providers ?? [];
-  const hasSocialLogin = authProviders.includes("google") || authProviders.includes("github");
+  const oidc = instanceConfig?.oidc;
+  const hasSocialLogin = !!oidc?.enabled || authProviders.includes("google") || authProviders.includes("github");
+
+  useEffect(() => {
+    if (searchParams.get("error") === "email_not_verified") {
+      toast.error("Your identity provider has not verified your email address, so we can't sign you in.", {
+        id: "email-not-verified",
+      });
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (searchParams.get("error") === "signup_disabled") {
@@ -263,6 +273,15 @@ export function LoginForm({ className, isInvitation = false, ...props }: LoginFo
     window.location.href = url.toString();
   };
 
+  const handleOIDCLogin = () => {
+    setCookie("lastUsedLogin", "oidc", { expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7) }); // 7 days
+    const url = new URL(`${BACKEND_URLS.BASE}/api/auth/social/oidc`);
+    if (formData.teamInviteUUID) {
+      url.searchParams.set("invite_uuid", formData.teamInviteUUID);
+    }
+    window.location.href = url.toString();
+  };
+
   const LastUsedPill = () => (
     <div className="absolute z-20 translate-x-10 w-max mx-auto px-3 py-1 border border-gray-200 right-[30px] top-[-15px] font-medium text-center whitespace-nowrap bg-white shadow-md text-slate-700 text-xs rounded-md">
       Last Used
@@ -310,6 +329,13 @@ export function LoginForm({ className, isInvitation = false, ...props }: LoginFo
                   <div className="grid gap-6 relative">
                     {hasSocialLogin && (
                       <div className="flex flex-col gap-4 relative z-0">
+                        {oidc?.enabled && (
+                          <Button type="button" variant="outline" className="w-full relative" onClick={handleOIDCLogin}>
+                            <HiOutlineKey className="size-5 mr-2" />
+                            {isSignUp ? `Sign up with ${oidc.display_name}` : `Login with ${oidc.display_name}`}
+                            {cookies.lastUsedLogin === "oidc" && <LastUsedPill />}
+                          </Button>
+                        )}
                         {authProviders.includes("google") && (
                           <Button
                             type="button"
