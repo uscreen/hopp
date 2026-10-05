@@ -94,8 +94,8 @@ OIDC_DISPLAY_NAME=Example SSO
 How accounts are handled:
 
 - Users are matched by email address. The provider must send `email_verified: true`, otherwise the login is rejected.
-- A new user without an invitation gets their own team, like with the other login methods. Set `OIDC_SINGLE_TEAM=true` if everyone from your provider belongs together: the first user creates the team and becomes its admin, everyone after that joins it.
-- With `DISABLE_SIGNUP`, new OIDC users need an invitation too, unless `OIDC_SINGLE_TEAM` is set: then your provider decides who gets an account.
+- A new user without an invitation gets their own team, like with the other login methods. Set `OIDC_SINGLE_TEAM=true` if everyone from your provider belongs together: the first OIDC user creates the team and becomes its admin, everyone after that joins it. Teams that already exist are never joined this way. To use an existing team instead, mark it once before enabling the switch: `UPDATE teams SET is_oidc_team = true WHERE id = <team id>;`
+- With `DISABLE_SIGNUP`, new OIDC users need an invitation too, unless `OIDC_SINGLE_TEAM` is set and the OIDC team exists: then your provider decides who gets an account. On an instance that already has users, mark the team first as described above.
 - The issuer and its endpoints must use `https`; plain `http` is accepted for `localhost` only. ID tokens are verified against the provider's signing keys (`jwks_uri`).
 - If the provider cannot be reached when the backend starts, OIDC login is disabled with a warning in the log and the other login methods keep working. Restart the backend once the provider is back.
 
