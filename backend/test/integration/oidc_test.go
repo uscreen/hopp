@@ -597,3 +597,40 @@ func TestOIDC_SingleTeamProvisionsUsersDespiteDisableSignup(t *testing.T) {
 	blocked := postJSON(t, srv, "/api/sign-up", signUpPayload("stranger@gmail.com"))
 	assert.Equal(t, http.StatusForbidden, blocked.Code)
 }
+
+func TestOIDC_ExistingInstanceNeedsMarkedTeamWithDisableSignup(t *testing.T) {
+	idp := newFakeIDP(t)
+	srv, cleanup := setupTestServerWithOIDC(t, idp, func(cfg *config.Config) {
+		cfg.Auth.DisableSignup = true
+		cfg.Auth.DisablePasswordLogin = true
+		cfg.Auth.OIDC.SingleTeam = true
+	})
+	defer cleanup()
+
+	// An instance that was in use before OIDC was switched on.
+	owner := createTestUser(t, srv.DB, "owner@gmail.com", "Owner", "User", "securepassword123", false)
+
+	// Until the operator marks the team, new OIDC users are turned away
+	// instead of ending up in a second team.
+	rec := oidcLogin(t, srv, idp, verifiedClaims("ada@gmail.com", "Ada"), nil)
+	assert.Equal(t, "/login?error=signup_disabled", rec.Header().Get("Location"))
+
+	var teams int64
+	require.NoError(t, srv.DB.Model(&models.Team{}).Count(&teams).Error)
+	assert.Equal(t, int64(1), teams)
+
+	require.NoError(t, srv.DB.Exec("UPDATE teams SET is_oidc_team = true WHERE id = ?", *owner.TeamID).Error)
+
+	rec = oidcLogin(t, srv, idp, verifiedClaims("ada@gmail.com", "Ada"), nil)
+	require.Equal(t, http.StatusFound, rec.Code)
+	assert.Contains(t, rec.Header().Get("Location"), "/login?token=")
+
+	var ada models.User
+	require.NoError(t, srv.DB.Where("email = ?", "ada@gmail.com").First(&ada).Error)
+	assert.Equal(t, *owner.TeamID, *ada.TeamID)
+	assert.False(t, ada.IsAdmin)
+
+	// Existing accounts keep signing in through OIDC throughout.
+	rec = oidcLogin(t, srv, idp, verifiedClaims("owner@gmail.com", "Owner"), nil)
+	assert.Contains(t, rec.Header().Get("Location"), "/login?token=")
+}
