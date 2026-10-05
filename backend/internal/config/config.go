@@ -174,8 +174,8 @@ func Load() (*Config, error) {
 	c.Auth.OIDC.Redirect = fmt.Sprintf("https://%s/api/auth/social/oidc/callback", c.Server.DeployDomain)
 	c.Auth.OIDC.SingleTeam = os.Getenv("OIDC_SINGLE_TEAM") == "true"
 
-	if c.Auth.DisablePasswordLogin && len(c.SocialProviders()) == 0 && !c.IsOIDCConfigured() {
-		return nil, fmt.Errorf("DISABLE_PASSWORD_LOGIN is set but neither a social login provider nor OIDC is configured, nobody could sign in")
+	if c.Auth.DisablePasswordLogin && !c.hasWebLoginProvider() && !c.IsOIDCConfigured() {
+		return nil, fmt.Errorf("DISABLE_PASSWORD_LOGIN is set but neither Google, GitHub nor OIDC login is configured, nobody could sign in")
 	}
 
 	c.Database.DSN = os.Getenv("DATABASE_DSN")
@@ -275,4 +275,16 @@ func (c *Config) SocialProviders() []string {
 // configured. Only the issuer and client ID are required.
 func (c *Config) IsOIDCConfigured() bool {
 	return c.Auth.OIDC.IssuerURL != "" && c.Auth.OIDC.ClientID != ""
+}
+
+// hasWebLoginProvider reports whether a social provider is configured that
+// the web app offers a login button for. Slack is registered when configured,
+// but its button is disabled in the web app, so it does not count.
+func (c *Config) hasWebLoginProvider() bool {
+	for _, provider := range c.SocialProviders() {
+		if provider != "slack" {
+			return true
+		}
+	}
+	return false
 }
