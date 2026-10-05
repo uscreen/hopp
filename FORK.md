@@ -133,12 +133,29 @@ has merged the corresponding PR.
 | `feat(backend): let OIDC satisfy DISABLE_PASSWORD_LOGIN and DISABLE_SIGNUP` | Glue between the switches and OIDC; only exists where both are present.                        | yes, with the later of the two PRs | -                          |
 | `perf(web-app): shrink login and dashboard images`                          | Two inlined PNGs made the web app a 7.9 MB download on every first load.                       | yes                                | `feat/optimize-web-assets` |
 | `perf(selfhost): compress responses in the bundled Caddy`                   | Only matters for the bundled Caddy; we compress in Traefik, kept so the branch matches the PR. | yes                                | `feat/optimize-web-assets` |
+| `fix(web-app): do not let the team name refetch decide on success`          | Review fix for the team name setting.                                                          | yes                                | `feat/team-name-setting`   |
+| `fix(backend): do not accept Slack alone for DISABLE_PASSWORD_LOGIN`        | Review fix; on `uscreen` the check also accepts OIDC.                                          | yes                                | `feat/feature-switches`    |
+| `fix(backend): verify OIDC ID token signatures and require https`           | Review fix; goth does not verify ID token signatures.                                          | yes                                | `feat/oidc-sso`            |
+| `fix(backend): bind OIDC single-team mode to a dedicated team`              | Review fix; OIDC users only join the team marked `is_oidc_team`.                               | yes                                | `feat/oidc-sso`            |
+| `test(backend): cover adopting an existing team with DISABLE_SIGNUP`        | Our own upgrade path: switches plus OIDC on an instance that already has a team.               | yes, with the later of the two PRs | -                          |
 
 `feat/feature-switches` and `feat/oidc-sso` are independent upstream PRs that both add
 `GET /api/config`. Picking the second one onto `uscreen` conflicts in `config.go`, `server.go`,
 `instanceConfig.go`, `openapi.yaml`, `Login.tsx` and the self-hosting docs: keep both sides, then
 regenerate `web-app/src/openapi.d.ts` and `tauri/src/openapi.d.ts` (`yarn generate-openapi-types`,
 then Prettier).
+
+## Upgrading an instance that already has a team
+
+`OIDC_SINGLE_TEAM` only joins the team marked `is_oidc_team`. On an instance that was in use
+before, mark the existing team once after the backend has started with the new image
+(`AutoMigrate` adds the column). Until then, new OIDC users are rejected when `DISABLE_SIGNUP`
+is set; existing accounts are not affected.
+
+```sql
+SELECT id, name FROM teams ORDER BY id;
+UPDATE teams SET is_oidc_team = true WHERE id = <team id>;
+```
 
 ## Building our backend image
 
