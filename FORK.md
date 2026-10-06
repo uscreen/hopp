@@ -138,6 +138,7 @@ has merged the corresponding PR.
 | `fix(backend): verify OIDC ID token signatures and require https`           | Review fix; goth does not verify ID token signatures.                                          | yes                                | `feat/oidc-sso`            |
 | `fix(backend): bind OIDC single-team mode to a dedicated team`              | Review fix; OIDC users only join the team marked `is_oidc_team`.                               | yes                                | `feat/oidc-sso`            |
 | `test(backend): cover adopting an existing team with DISABLE_SIGNUP`        | Our own upgrade path: switches plus OIDC on an instance that already has a team.               | yes, with the later of the two PRs | -                          |
+| `fix(backend): close two gaps in the OIDC callback`                         | Review fix; rejects a missing PKCE verifier and locks the OIDC team setup.                     | yes                                | `feat/oidc-sso`            |
 
 `feat/feature-switches` and `feat/oidc-sso` are independent upstream PRs that both add
 `GET /api/config`. Picking the second one onto `uscreen` conflicts in `config.go`, `server.go`,
