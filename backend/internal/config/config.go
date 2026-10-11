@@ -165,7 +165,8 @@ func Load() (*Config, error) {
 
 	c.Auth.DisableSignup = os.Getenv("DISABLE_SIGNUP") == "true"
 	c.Auth.DisablePasswordLogin = os.Getenv("DISABLE_PASSWORD_LOGIN") == "true"
-	c.Auth.OIDC.IssuerURL = strings.TrimRight(os.Getenv("OIDC_ISSUER_URL"), "/")
+	// Must match the issuer in the discovery document exactly, including any trailing slash.
+	c.Auth.OIDC.IssuerURL = os.Getenv("OIDC_ISSUER_URL")
 	c.Auth.OIDC.ClientID = os.Getenv("OIDC_CLIENT_ID")
 	c.Auth.OIDC.ClientSecret = os.Getenv("OIDC_CLIENT_SECRET")
 	c.Auth.OIDC.DisplayName = os.Getenv("OIDC_DISPLAY_NAME")
