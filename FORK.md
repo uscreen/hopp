@@ -141,6 +141,7 @@ has merged the corresponding PR.
 | `fix(backend): close two gaps in the OIDC callback`                           | Review fix; rejects a missing PKCE verifier and locks the OIDC team setup.                     | yes                                | `feat/oidc-sso`            |
 | `fix(backend): pin OIDC callback to its route and verify tokens with go-oidc` | Maintainer fix; OIDC checks could be skipped through another provider's callback route.        | yes                                | `feat/oidc-sso`            |
 | `chore: deleted file`                                                         | Second half of the commit above (removes `oidcKeys.go`); the first does not build without it.  | yes                                | `feat/oidc-sso`            |
+| `fix(backend): bump go-jose to v4.1.6`                                        | Review fix; v4.1.4 has a DoS in JWK parsing (GHSA-mgcc-cww5-fp2q).                             | yes                                | `feat/oidc-sso`            |
 
 `feat/feature-switches` and `feat/oidc-sso` are independent upstream PRs that both add
 `GET /api/config`. Picking the second one onto `uscreen` conflicts in `config.go`, `server.go`,
