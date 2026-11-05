@@ -47,7 +47,8 @@ func TestLoad_DisablePasswordLoginAcceptsOIDCOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected Load to succeed with OIDC configured, got: %v", err)
 	}
-	if cfg.Auth.OIDC.IssuerURL != "https://id.example.com" {
-		t.Fatalf("expected trailing slash to be trimmed from the issuer, got %q", cfg.Auth.OIDC.IssuerURL)
+	// The issuer is compared with the discovery document verbatim, so it must not be normalized.
+	if cfg.Auth.OIDC.IssuerURL != "https://id.example.com/" {
+		t.Fatalf("expected the issuer to be kept as configured, got %q", cfg.Auth.OIDC.IssuerURL)
 	}
 }
