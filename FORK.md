@@ -146,6 +146,13 @@ has merged the corresponding PR.
 regenerate `web-app/src/openapi.d.ts` and `tauri/src/openapi.d.ts` (`yarn generate-openapi-types`,
 then Prettier).
 
+`feat/switches-with-oidc` holds the combined result on top of `upstream/main`: both PRs with
+those conflicts resolved, plus the three glue commits marked "with the later of the two PRs".
+It is not a PR of its own. Once the first PR is merged upstream, rebase the other branch onto
+`main`, take conflicting files from this branch (`git checkout feat/switches-with-oidc -- <file>`),
+and cherry-pick the glue commits on top. Its tree equals `uscreen` without `FORK.md` and
+`scripts/sync-upstream.sh`; recreate it after every rebase of `uscreen`.
+
 ## Upgrading an instance that already has a team
 
 `OIDC_SINGLE_TEAM` only joins the team marked `is_oidc_team`. On an instance that was in use
